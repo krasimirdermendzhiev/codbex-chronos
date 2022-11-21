@@ -1,62 +1,93 @@
+/*
+ * Copyright (c) 2022 codbex or an codbex affiliate company and contributors
+ *
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v2.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v20.html
+ *
+ * SPDX-FileCopyrightText: 2022 codbex or an codbex affiliate company and contributors
+ * SPDX-License-Identifier: EPL-2.0
+ */
 let app = angular.module("app", ['ideUI', 'ideView']);
 
 app.config(["messageHubProvider", function (messageHubProvider) {
     messageHubProvider.eventIdPrefix = 'chronos-developer-fillouttimesheet';
 }]);
 
-app.controller('controller', ['$scope', '$http', 'utilities', function ($scope, $http, utilities) {
+app.controller('controller', ['$scope', 'utilities', 'api', function ($scope, utilities, api) {
 
-    const { TimesheetStatus, settings } = utilities;
+    const { TimesheetStatus, settings, dateToString, groupTimesheetItemsByDate } = utilities;
     $scope.options = utilities.options;
     $scope.maxHoursPerWeek = settings.maxHoursPerWeek;
+    $scope.dateToString = dateToString;
 
-    $scope.timesheet = {};
+    $scope.timesheet = {
+        items: [],
+        groupedItems: [],
+        groupItems: () => $scope.timesheet.groupedItems = groupTimesheetItemsByDate([$scope.timesheet])[0].groupedItems,
+        addItem: (item) => {
+            $scope.timesheet.items.push(item);
+            $scope.timesheet.groupItems();
+        },
+        removeItem: (id) => {
+            const { items } = $scope.timesheet;
+            let index = items.findIndex(item => item.Id === id);
+            if (index >= 0) {
+                items.splice(index, 1);
+                $scope.timesheet.groupItems();
+            }
+        },
+        clearItems: () => {
+            $scope.timesheet.items = [];
+            $scope.timesheet.groupedItems = [];
+        }
+    };
     $scope.timesheet.Start = utilities.getMonday(new Date());
     $scope.timesheet.End = utilities.getFriday(new Date());
 
     $scope.projects = [];
     $scope.tasks = [];
 
-    $http.get('/services/v4/js/chronos-ext/services/common/myprojects.js').then(function (response) {
-        $scope.projects = response.data;
+    api.getDeveloperProjects()
+        .then(function (projects) {
+            $scope.projects = projects;
 
-        if ($scope.projects.length == 1) {
-            $scope.timesheet.projectId = $scope.projects[0].Id;
-            $scope.loadTasks();
-        }
-    });
+            if ($scope.projects.length == 1) {
+                $scope.timesheet.projectId = $scope.projects[0].Id;
+                $scope.loadTasks();
+            }
+        });
 
     $scope.loadTasks = function () {
         const { projectId } = $scope.timesheet;
         if (projectId) {
-            $http.get(`/services/v4/js/chronos-ext/services/developer/mytasks.js?ProjectId=${projectId}`)
-                .then(function (response) {
-                    $scope.tasks = response.data;
-                    $scope.items = [];
+            api.getDeveloperProjectTasks(projectId)
+                .then(function (tasks) {
+                    $scope.tasks = tasks;
+                    $scope.timesheet.clearItems();
                 });
         }
     };
 
-    $http.get('/services/v4/js/chronos-ext/services/common/myuser.js').then(function (response) {
-        $scope.userid = response.data;
-    });
+    api.getUser()
+        .then(function (userId) {
+            $scope.userid = userId;
+        });
 
-    $scope.items = [];
     $scope.item = {};
     $scope.item.Id = (new Date()).getTime();
 
     $scope.addItem = function () {
         $scope.item.ProjectId = $scope.timesheet.projectId;
-        $scope.items.push($scope.item);
+        $scope.timesheet.addItem($scope.item);
+
         $scope.item = {};
         $scope.item.Id = (new Date()).getTime();
-
     }
 
     $scope.removeItem = function (id) {
-        $scope.items.splice($scope.items.findIndex(function (i) {
-            return i.Id === id;
-        }), 1);
+        $scope.timesheet.removeItem(id);
     }
 
     $scope.saveTimesheet = function () {
@@ -68,27 +99,30 @@ app.controller('controller', ['$scope', '$http', 'utilities', function ($scope, 
         timesheet.ProjectId = $scope.timesheet.projectId;
         timesheet.Status = TimesheetStatus.Opened;
 
-        $http.post('/services/v4/js/chronos-app/gen/api/Timesheets/Timesheet.js', JSON.stringify(timesheet))
-            .then(function (data) {
-                $scope.items.forEach(function (item) {
+        api.createTimesheet(timesheet)
+            .then(function (createdTimesheet) {
+                $scope.timesheet.items.forEach(function (item) {
                     let timesheetItem = {};
-                    timesheetItem.TimesheetId = data.data.Id;
+                    timesheetItem.TimesheetId = createdTimesheet.Id;
                     timesheetItem.TaskId = item.taskId;
+                    timesheetItem.Day = item.Day;
                     timesheetItem.Hours = item.Hours;
                     timesheetItem.Description = item.Description;
-                    $http.post('/services/v4/js/chronos-app/gen/api/Timesheets/Item.js', JSON.stringify(timesheetItem))
-                        .then(function (data) {
+
+                    api.createTimesheetItem(timesheetItem)
+                        .then(function () {
                             console.log("Item has been stored: " + JSON.stringify(timesheetItem));
-                        }, function (data) {
-                            alert('Error: ' + JSON.stringify(data.data));
+                        }, function (error) {
+                            alert('Error: ' + JSON.stringify(error));
                         });
                 })
+
                 console.log("Timesheet has been stored: " + JSON.stringify(timesheet));
 
                 $scope.gotoNextStep();
 
-            }, function (data) {
-                alert('Error: ' + JSON.stringify(data.data));
+            }, function (error) {
+                alert('Error: ' + JSON.stringify(error));
             });
 
     }
@@ -106,7 +140,7 @@ app.controller('controller', ['$scope', '$http', 'utilities', function ($scope, 
     $scope.restart = function () {
         $scope.page.number = 1;
         $scope.page.completed = 0;
-        $scope.items = [];
+        $scope.timesheet.clearItems();
     }
 
     $scope.gotoNextStep = function () {
@@ -153,7 +187,7 @@ app.controller('controller', ['$scope', '$http', 'utilities', function ($scope, 
                 isDisabled = !$scope.timesheet.projectId || !$scope.timesheet.Start || !$scope.timesheet.End;
                 break;
             case 2:
-                isDisabled = !$scope.items.length;
+                isDisabled = !$scope.timesheet.items.length;
                 break;
         }
 
@@ -161,7 +195,7 @@ app.controller('controller', ['$scope', '$http', 'utilities', function ($scope, 
     }
 
     $scope.getAddTaskButtonState = function () {
-        return !$scope.item.Hours || !$scope.item.taskId ? 'disabled' : undefined;
+        return !$scope.item.Hours || !$scope.item.taskId || !$scope.item.Day ? 'disabled' : undefined;
     }
 
     $scope.getProjectName = function (id) {
@@ -175,7 +209,7 @@ app.controller('controller', ['$scope', '$http', 'utilities', function ($scope, 
     }
 
     $scope.getTotalHours = function () {
-        return $scope.items.reduce((sum, x) => sum + x.Hours, 0);
+        return $scope.timesheet.items.reduce((sum, x) => sum + x.Hours, 0);
     }
 
     $scope.isNextDisabled = function () {

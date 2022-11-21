@@ -1,6 +1,7 @@
 const query = require("db/v4/query");
 const producer = require("messaging/v4/producer");
 const daoApi = require("db/v4/dao");
+const EntityUtils = require("chronos-app/gen/dao/utils/EntityUtils");
 
 let dao = daoApi.create({
 	table: "CHRONOS_ITEM",
@@ -21,6 +22,7 @@ let dao = daoApi.create({
 			name: "TaskId",
 			column: "ITEM_TASKID",
 			type: "INTEGER",
+			required: true
 		},
  {
 			name: "Description",
@@ -31,19 +33,31 @@ let dao = daoApi.create({
 			name: "Hours",
 			column: "ITEM_HOURS",
 			type: "INTEGER",
+			required: true
+		},
+ {
+			name: "Day",
+			column: "ITEM_DAY",
+			type: "DATE",
 		}
 ]
 });
 
 exports.list = function(settings) {
-	return dao.list(settings);
+	return dao.list(settings).map(function(e) {
+		EntityUtils.setDate(e, "Day");
+		return e;
+	});
 };
 
 exports.get = function(id) {
-	return dao.find(id);
+	let entity = dao.find(id);
+	EntityUtils.setDate(entity, "Day");
+	return entity;
 };
 
 exports.create = function(entity) {
+	EntityUtils.setLocalDate(entity, "Day");
 	let id = dao.insert(entity);
 	triggerEvent("Create", {
 		table: "CHRONOS_ITEM",
@@ -57,6 +71,7 @@ exports.create = function(entity) {
 };
 
 exports.update = function(entity) {
+	// EntityUtils.setLocalDate(entity, "Day");
 	dao.update(entity);
 	triggerEvent("Update", {
 		table: "CHRONOS_ITEM",
@@ -81,7 +96,7 @@ exports.delete = function(id) {
 };
 
 exports.count = function (TimesheetId) {
-	let resultSet = query.execute("SELECT COUNT(*) AS COUNT FROM CHRONOS_ITEM WHERE ITEM_TIMESHEETID = ?", [TimesheetId]);
+	let resultSet = query.execute('SELECT COUNT(*) AS COUNT FROM "CHRONOS_ITEM" WHERE "ITEM_TIMESHEETID" = ?', [TimesheetId]);
 	if (resultSet !== null && resultSet[0] !== null) {
 		if (resultSet[0].COUNT !== undefined && resultSet[0].COUNT !== null) {
 			return resultSet[0].COUNT;
@@ -93,7 +108,7 @@ exports.count = function (TimesheetId) {
 };
 
 exports.customDataCount = function() {
-	let resultSet = query.execute("SELECT COUNT(*) AS COUNT FROM CHRONOS_ITEM");
+	let resultSet = query.execute('SELECT COUNT(*) AS COUNT FROM "CHRONOS_ITEM"');
 	if (resultSet !== null && resultSet[0] !== null) {
 		if (resultSet[0].COUNT !== undefined && resultSet[0].COUNT !== null) {
 			return resultSet[0].COUNT;

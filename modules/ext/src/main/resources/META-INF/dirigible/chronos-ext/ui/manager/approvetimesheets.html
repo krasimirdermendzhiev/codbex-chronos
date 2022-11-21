@@ -18,12 +18,14 @@
 
         <link rel="icon" sizes="any" href="data:;base64,iVBORw0KGgo=" />
 
-        <script type="text/javascript" src="/services/v4/js/ide-core/services/loader.js?id=ide-view-js"></script>
+        <script type="text/javascript" src="/services/v4/js/resources-core/services/loader.js?id=ide-view-js"></script>
 
         <script type="text/javascript" src="approvetimesheets.js"></script>
         <script type="text/javascript" src="/services/v4/web/chronos-ext/services/common/utilities.js"></script>
+        <script type="text/javascript" src="../common/api.js"></script>
 
-        <link type="text/css" rel="stylesheet" href="/services/v4/js/ide-core/services/loader.js?id=ide-view-css" />
+        <link type="text/css" rel="stylesheet"
+            href="/services/v4/js/resources-core/services/loader.js?id=ide-view-css" />
         <theme></theme>
 
         <link type="text/css" rel="stylesheet" href="style.css" />
@@ -95,11 +97,19 @@
                                                 </fd-toolbar>
                                             </td>
                                         </tr>
-                                        <tr fd-table-row ng-repeat-end ng-repeat="item in next.items">
-                                            <td fd-table-cell nesting-level="2">{{$index + 1}}. {{item.Name}}</td>
+                                        <tr fd-table-row
+                                            ng-repeat-start="itemsByDate in next.groupedItems | orderBy:'day'">
+                                            <td fd-table-group-cell nesting-level="2" expanded="true">
+                                                <b>{{dateToString(itemsByDate.day)}}</b>
+                                            </td>
+                                        </tr>
+                                        <tr fd-table-row ng-repeat-end
+                                            ng-repeat="item in itemsByDate.items | orderBy:'Id'">
+                                            <td fd-table-cell nesting-level="3">{{item.Name}}</td>
                                             <td fd-table-cell>{{item.Description}}</td>
                                             <td fd-table-cell>{{item.Hours}}</td>
                                         </tr>
+                                        <tr ng-repeat-end ng-if="false"></tr>
                                         <tr ng-if="!hasSelectedProject()" fd-table-row>
                                             <td fd-table-cell no-data="true">Please, select a project from the drop-down
                                             </td>
@@ -153,7 +163,8 @@
                     <div class="fd-bar__right">
                         <div class="fd-bar__element">
                             <fd-button dg-type="emphasized" class="fd-dialog__decisive-button" compact="true"
-                                dg-label="Reject" ng-click="rejectTimesheet()">
+                                dg-label="Reject" ng-click="rejectTimesheet()"
+                                state="{{ reject.inProgress ? 'disabled' : undefined}}">
                             </fd-button>
                         </div>
                         <div class="fd-bar__element">

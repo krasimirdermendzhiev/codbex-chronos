@@ -24,8 +24,14 @@ angular.module('page', ["ideUI", "ideView", "entityApi"])
 				if ($scope.action === "create") {
 					// Set Errors for required fields only
 					$scope.formErrors = {
+						TaskId: true,
+						Hours: true,
 
 					};
+				}
+
+				if (params.entity.Day) {
+					params.entity.Day = new Date(params.entity.Day);
 				}
 
 				$scope.entity = params.entity;

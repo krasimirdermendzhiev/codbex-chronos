@@ -18,12 +18,14 @@
 
         <link rel="icon" sizes="any" href="data:;base64,iVBORw0KGgo=" />
 
-        <script type="text/javascript" src="/services/v4/js/ide-core/services/loader.js?id=ide-view-js"></script>
+        <script type="text/javascript" src="/services/v4/js/resources-core/services/loader.js?id=ide-view-js"></script>
 
         <script type="text/javascript" src="fillouttimesheet.js"></script>
-        <script type="text/javascript" src="/services/v4/web/chronos-ext/services/common/utilities.js"></script>
+        <script type="text/javascript" src="../../services/common/utilities.js"></script>
+        <script type="text/javascript" src="../common/api.js"></script>
 
-        <link type="text/css" rel="stylesheet" href="/services/v4/js/ide-core/services/loader.js?id=ide-view-css" />
+        <link type="text/css" rel="stylesheet"
+            href="/services/v4/js/resources-core/services/loader.js?id=ide-view-css" />
         <theme></theme>
 
         <style>
@@ -106,6 +108,13 @@
                                         </fd-select>
                                     </fd-form-item>
                                     <fd-form-item>
+                                        <fd-form-label for="day" dg-required="true" dg-colon="true">Day
+                                        </fd-form-label>
+                                        <fd-input id="day" type="date" placeholder="Enter the day" ng-model="item.Day"
+                                            required="required">
+                                        </fd-input>
+                                    </fd-form-item>
+                                    <fd-form-item>
                                         <fd-form-label for="hours" dg-required="true" dg-colon="true">Hours
                                         </fd-form-label>
                                         <fd-input id="hours" type="number" placeholder="Enter hours spent"
@@ -134,11 +143,11 @@
                             <fd-toolbar has-title="true">
                                 <h4>Tasks for: {{getProjectName(timesheet.projectId)}}</h4>
                                 <fd-toolbar-spacer></fd-toolbar-spacer>
-                                <b><i>{{timesheet.Start.toLocaleDateString("en-US", options)}}</i></b> -
-                                <b><i>{{timesheet.End.toLocaleDateString("en-US", options)}}</i></b>
+                                <b><i>{{dateToString(timesheet.Start)}}</i></b> -
+                                <b><i>{{dateToString(timesheet.End)}}</i></b>
                             </fd-toolbar>
                             <fd-scrollbar class="dg-stretch">
-                                <table fd-table display-mode="compact" sticky="true">
+                                <table fd-table fd-table-group display-mode="compact" sticky="true">
                                     <thead fd-table-header sticky="true">
                                         <tr fd-table-row>
                                             <th fd-table-header-cell>Task</th>
@@ -148,8 +157,15 @@
                                         </tr>
                                     </thead>
                                     <tbody fd-table-body>
-                                        <tr fd-table-row ng-repeat="next in items" hoverable="true" activable="false">
-                                            <td fd-table-cell>
+                                        <tr fd-table-row
+                                            ng-repeat-start="itemsByDate in timesheet.groupedItems | orderBy:'day'">
+                                            <td fd-table-group-cell nesting-level="1" expanded="true">
+                                                <b>{{dateToString(itemsByDate.day)}}</b>
+                                            </td>
+                                        </tr>
+                                        <tr fd-table-row ng-repeat-end ng-repeat="next in itemsByDate.items"
+                                            hoverable="true" activable="false">
+                                            <td fd-table-cell nesting-level="2">
                                                 <div class="tdSingleLine">{{getTaskName(next.taskId)}}</div>
                                             </td>
                                             <td fd-table-cell>
@@ -162,17 +178,17 @@
                                                 <div class="tdSingleLine">
                                                     <fd-button dg-type="transparent" glyph="sap-icon--delete"
                                                         title="Remove" aria-label="Remove"
-                                                        ng-click="removeItem(next.Id)" aria-hidden="true">
+                                                        ng-click="timesheet.removeItem(next.Id)" aria-hidden="true">
                                                     </fd-button>
                                                 </div>
                                             </td>
                                         </tr>
-                                        <tr ng-if="!items.length" fd-table-row>
+                                        <tr ng-if="!timesheet.items.length" fd-table-row>
                                             <td fd-table-cell no-data="true">Add some tasks</td>
                                         </tr>
 
                                     </tbody>
-                                    <tfoot fd-table-footer ng-if="items.length">
+                                    <tfoot fd-table-footer ng-if="timesheet.items.length">
                                         <tr fd-table-row>
                                             <td fd-table-cell></td>
                                             <td fd-table-cell>{{getTotalHours()}}</td>

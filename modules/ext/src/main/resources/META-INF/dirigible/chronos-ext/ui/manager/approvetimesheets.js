@@ -1,8 +1,19 @@
+/*
+ * Copyright (c) 2022 codbex or an codbex affiliate company and contributors
+ *
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v2.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v20.html
+ *
+ * SPDX-FileCopyrightText: 2022 codbex or an codbex affiliate company and contributors
+ * SPDX-License-Identifier: EPL-2.0
+ */
 let app = angular.module("app", ['ideUI', 'ideView']);
 
-app.controller('controller', ['$scope', '$http', 'utilities', function ($scope, $http, utilities) {
+app.controller('controller', ['$scope', 'api', 'utilities', function ($scope, api, utilities) {
 
-    const { TimesheetStatus } = utilities;
+    const { TimesheetStatus, dateToString, groupTimesheetItemsByDate } = utilities;
 
     $scope.projects = [];
     $scope.timesheets = [];
@@ -12,6 +23,7 @@ app.controller('controller', ['$scope', '$http', 'utilities', function ($scope, 
         timesheet: {},
         reason: ''
     };
+    $scope.dateToString = dateToString;
 
     const removeTimesheet = function (timesheet) {
         const index = $scope.timesheets.findIndex(x => x.Id === timesheet.Id);
@@ -27,32 +39,34 @@ app.controller('controller', ['$scope', '$http', 'utilities', function ($scope, 
         return project && project.Name;
     }
 
-    $http.get('/services/v4/js/chronos-ext/services/common/myprojects.js').then(function (response) {
-        $scope.projects = response.data;
-    });
+    api.getManagerProjects()
+        .then(function (projects) {
+            $scope.projects = projects;
+        });
 
     $scope.loadTimesheets = function () {
         const { projectId } = $scope.manage;
         if (projectId) {
-            $http.get(`/services/v4/js/chronos-ext/services/manager/mytimesheets.js?ProjectId=${projectId}&StatusId=${TimesheetStatus.Opened}&StatusId=${TimesheetStatus.Reopened}`)
-                .then(function (response) {
-                    $scope.timesheets = response.data;
+            api.getManagerTimesheets(projectId, [TimesheetStatus.Opened, TimesheetStatus.Reopened])
+                .then(function (timesheets) {
+                    $scope.timesheets = groupTimesheetItemsByDate(timesheets);
                 });
         }
     };
 
-    $http.get('/services/v4/js/chronos-ext/services/common/myuser.js').then(function (response) {
-        $scope.userid = response.data;
-    });
+    api.getUser()
+        .then(function (userId) {
+            $scope.userid = userId;
+        });
 
     $scope.approveTimesheet = function (timesheet, e) {
         e.stopPropagation();
 
-        $http.post('/services/v4/js/chronos-ext/services/manager/approvetimesheet.js/' + timesheet.Id)
-            .then(function (data) {
+        api.approveTimesheet(timesheet.Id)
+            .then(function () {
                 removeTimesheet(timesheet);
-            }, function (data) {
-                alert('Error: ' + JSON.stringify(data.data));
+            }, function (error) {
+                alert('Error: ' + JSON.stringify(error));
             });
     }
 
@@ -61,12 +75,15 @@ app.controller('controller', ['$scope', '$http', 'utilities', function ($scope, 
         if (!timesheet.Id)
             return;
 
-        $http.post('/services/v4/js/chronos-ext/services/manager/rejecttimesheet.js/' + timesheet.Id, { reason })
-            .then(function (data) {
+        $scope.reject.inProgress = true;
+
+        api.rejectTimesheet(timesheet.Id, reason)
+            .then(function () {
                 removeTimesheet(timesheet);
                 $scope.hideRejectDialog();
-            }, function (data) {
-                alert('Error: ' + JSON.stringify(data.data));
+            }, function (error) {
+                $scope.reject.inProgress = false;
+                alert('Error: ' + JSON.stringify(error));
             });
     }
 
@@ -80,6 +97,7 @@ app.controller('controller', ['$scope', '$http', 'utilities', function ($scope, 
         $scope.reject.reason = '';
         $scope.reject.timesheet = {};
         $scope.reject.showDialog = false;
+        $scope.reject.inProgress = false;
     }
 
 }]);

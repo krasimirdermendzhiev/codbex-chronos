@@ -1,6 +1,17 @@
+/*
+ * Copyright (c) 2022 codbex or an codbex affiliate company and contributors
+ *
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the Eclipse Public License v2.0
+ * which accompanies this distribution, and is available at
+ * http://www.eclipse.org/legal/epl-v20.html
+ *
+ * SPDX-FileCopyrightText: 2022 codbex or an codbex affiliate company and contributors
+ * SPDX-License-Identifier: EPL-2.0
+ */
 let app = angular.module("app", ['ideUI', 'ideView']);
 
-app.controller('controller', ['$scope', '$http', 'classNames', function ($scope, $http, classNames) {
+app.controller('controller', ['$scope', 'api', 'classNames', function ($scope, api, classNames) {
 
     $scope.projects = [];
     $scope.tasks = [];
@@ -9,38 +20,45 @@ app.controller('controller', ['$scope', '$http', 'classNames', function ($scope,
         showDialog: false
     };
 
-    $http.get('/services/v4/js/chronos-ext/services/common/myprojects.js').then(function (response) {
-        $scope.projects = response.data;
-    });
+    api.getManagerProjects()
+        .then(function (projects) {
+            $scope.projects = projects;
+        });
 
-    $http.get('/services/v4/js/chronos-app/gen/api/Projects/TaskStatus.js').then(function (response) {
-        $scope.statuses = response.data;
-    });
+    api.getTaskStatuses()
+        .then(function (statuses) {
+            $scope.statuses = statuses;
+        });
+
+    const loadProjectTasks = function () {
+        api.getManagerProjectTasks($scope.manage.projectId)
+            .then(function (tasks) {
+                $scope.tasks = tasks;
+            });
+    }
 
     $scope.$watch('manage.projectId', function (newProjectId) {
         if (newProjectId) {
-            $http.get('/services/v4/js/chronos-ext/services/manager/mytasks.js?ProjectId=' + newProjectId).then(function (response) {
-                $scope.tasks = response.data;
-            });
+            loadProjectTasks();
         }
     });
 
-    $http.get('/services/v4/js/chronos-ext/services/common/myuser.js').then(function (response) {
-        $scope.userid = response.data;
-    });
+    api.getUser()
+        .then(function (userId) {
+            $scope.userid = userId;
+        });
 
     $scope.addTask = function () {
         $scope.manage.task.ProjectId = $scope.manage.projectId;
-        $http.post('/services/v4/js/chronos-app/gen/api/Projects/Task.js', JSON.stringify($scope.manage.task))
-            .then(function (data) {
-                $http.get('/services/v4/js/chronos-ext/services/manager/mytasks.js?ProjectId=' + $scope.manage.projectId).then(function (response) {
-                    $scope.tasks = response.data;
-                });
+        api.createProjectTask($scope.manage.task)
+            .then(function () {
+                loadProjectTasks();
+
                 $scope.manage.task = {};
 
                 $scope.hideTaskDialog();
-            }, function (data) {
-                alert(JSON.stringify(data.data));
+            }, function (error) {
+                alert(JSON.stringify(error));
             });
     }
 
@@ -52,16 +70,15 @@ app.controller('controller', ['$scope', '$http', 'classNames', function ($scope,
 
         $scope.manage.task.ProjectId = $scope.manage.projectId;
 
-        $http.put(`/services/v4/js/chronos-app/gen/api/Projects/Task.js/${$scope.manage.task.Id}`, JSON.stringify($scope.manage.task))
-            .then(function (data) {
-                $http.get('/services/v4/js/chronos-ext/services/manager/mytasks.js?ProjectId=' + $scope.manage.projectId).then(function (response) {
-                    $scope.tasks = response.data;
-                });
+        api.updateProjectTask($scope.manage.task.Id, $scope.manage.task)
+            .then(function () {
+                loadProjectTasks();
+
                 $scope.manage.task = {};
 
                 $scope.hideTaskDialog();
-            }, function (data) {
-                alert(JSON.stringify(data.data));
+            }, function (error) {
+                alert(JSON.stringify(error));
             });
     }
 
@@ -73,13 +90,11 @@ app.controller('controller', ['$scope', '$http', 'classNames', function ($scope,
 
     $scope.removeTask = function (id) {
         if (confirm("Are you sure you want to delete this task")) {
-            $http.delete('/services/v4/js/chronos-app/gen/api/Projects/Task.js/' + id)
-                .then(function (data) {
-                    $http.get('/services/v4/js/chronos-ext/services/manager/mytasks.js?ProjectId=' + $scope.manage.projectId).then(function (response) {
-                        $scope.tasks = response.data;
-                    });
-                }, function (data) {
-                    alert(JSON.stringify(data));
+            api.deleteProjectTask(id)
+                .then(function () {
+                    loadProjectTasks();
+                }, function (error) {
+                    alert(JSON.stringify(error));
                 });
 
             $scope.manage.selectedTaskId = null;

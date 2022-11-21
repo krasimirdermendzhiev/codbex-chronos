@@ -18,12 +18,14 @@
 
         <link rel="icon" sizes="any" href="data:;base64,iVBORw0KGgo=" />
 
-        <script type="text/javascript" src="/services/v4/js/ide-core/services/loader.js?id=ide-view-js"></script>
+        <script type="text/javascript" src="/services/v4/js/resources-core/services/loader.js?id=ide-view-js"></script>
 
         <script type="text/javascript" src="managetimesheets.js"></script>
-        <script type="text/javascript" src="/services/v4/web/chronos-ext/services/common/utilities.js"></script>
+        <script type="text/javascript" src="../../services/common/utilities.js"></script>
+        <script type="text/javascript" src="../common/api.js"></script>
 
-        <link type="text/css" rel="stylesheet" href="/services/v4/js/ide-core/services/loader.js?id=ide-view-css" />
+        <link type="text/css" rel="stylesheet"
+            href="/services/v4/js/resources-core/services/loader.js?id=ide-view-css" />
         <theme></theme>
 
         <link type="text/css" rel="stylesheet" href="../manager/style.css" />
@@ -120,8 +122,15 @@
                                                 </fd-toolbar>
                                             </td>
                                         </tr>
-                                        <tr fd-table-row ng-repeat-end ng-repeat="item in next.items">
-                                            <td fd-table-cell nesting-level="2">{{$index + 1}}. {{item.Name}}</td>
+                                        <tr fd-table-row
+                                            ng-repeat-start="itemsByDate in next.groupedItems | orderBy:'day'">
+                                            <td fd-table-group-cell nesting-level="2" expanded="true">
+                                                <b>{{dateToString(itemsByDate.day)}}</b>
+                                            </td>
+                                        </tr>
+                                        <tr fd-table-row ng-repeat-end
+                                            ng-repeat="item in itemsByDate.items | orderBy:'Id'">
+                                            <td fd-table-cell nesting-level="3">{{item.Name}}</td>
                                             <td fd-table-cell>{{item.Description}}</td>
                                             <td fd-table-cell>{{item.Hours}}</td>
                                             <td fd-table-cell width="100px">
@@ -134,6 +143,7 @@
                                                 </fd-button>
                                             </td>
                                         </tr>
+                                        <tr ng-repeat-end ng-if="false"></tr>
                                         <tr ng-if="!hasSelectedProject()" fd-table-row>
                                             <td fd-table-cell no-data="true">Please, select a project from the drop-down
                                             </td>
@@ -182,6 +192,13 @@
                                 <fd-option ng-repeat="task in manage.tasks track by task.Id" text="{{ task.Name }}"
                                     value="task.Id"></fd-option>
                             </fd-select>
+                        </fd-form-item>
+                        <fd-form-item>
+                            <fd-form-label for="day" dg-required="true" dg-colon="true">Day
+                            </fd-form-label>
+                            <fd-input id="day" type="date" placeholder="Enter the day"
+                                ng-model="manage.timesheetItem.Day" required="required">
+                            </fd-input>
                         </fd-form-item>
                         <fd-form-item>
                             <fd-form-label for="hours" dg-required="true" dg-colon="true">Hours
