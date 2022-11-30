@@ -12,7 +12,7 @@ on:
         required: true
         default: 1.0.0-SNAPSHOT
     
-run-name: version set to ${{ github.event.inputs.releaseVersion }} for release
+run-name: 'version set to ${{ github.event.inputs.releaseVersion }} for release'
 
 jobs:
   build:
