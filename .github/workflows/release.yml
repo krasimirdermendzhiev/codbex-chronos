@@ -97,10 +97,10 @@ jobs:
         git commit -m "SNAPSHOT VERSION - ${{ github.event.inputs.snapshotVersion }}"
         git push
 
-    - name: Create GitHub Branch
-      run: |
-        git checkout -b ${{ env.CHRONOS_VERSION }}
-        git push origin ${{ env.CHRONOS_VERSION }}
+    # - name: Create GitHub Branch
+    #   run: |
+    #     git checkout -b ${{ env.CHRONOS_VERSION }}
+    #     git push origin ${{ env.CHRONOS_VERSION }}
 
     # - id: 'auth'
     #   uses: 'google-github-actions/auth@v1'
