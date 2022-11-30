@@ -11,7 +11,8 @@ on:
         description: Snapshot Version
         required: true
         default: 1.0.0-SNAPSHOT
-    run-name: ${{ github.event.inputs.releaseVersion }}
+    
+run-name: ${{ github.event.inputs.releaseVersion }}
 
 jobs:
   build:
