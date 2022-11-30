@@ -11,6 +11,7 @@ on:
         description: Snapshot Version
         required: true
         default: 1.0.0-SNAPSHOT
+    run-name: ${{ inputs.releaseVersion }}
 
 jobs:
   build:
@@ -83,7 +84,23 @@ jobs:
           ## Codbex Chronos - ${{ env.CHRONOS_VERSION }}
 
           Timesheets Management Application
-    
+
+    - name: Change snapshot version
+      run: |
+        git fetch
+        git checkout main
+        mvn versions:set -DnewVersion=${{ github.event.inputs.snapshotVersion }}
+        git config user.name "$GITHUB_ACTOR"
+        git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
+        git add .
+        git commit -m "SNAPSHOT VERSION - ${{ github.event.inputs.snapshotVersion }}"
+        git push
+
+    - name: Create GitHub Branch
+      run: |
+        git checkout -b ${{ env.CHRONOS_VERSION }}
+        git push origin ${{ env.CHRONOS_VERSION }}
+
     - id: 'auth'
       uses: 'google-github-actions/auth@v1'
       with:
